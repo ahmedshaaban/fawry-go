@@ -10,14 +10,26 @@ import (
 	"strings"
 )
 
-const apiPath = "/ECommerceWeb/Fawry/payments/"
-const baseURL = "https://www.atfawry.com"
-const sandboxBaseURL = "https://atfawry.fawrystaging.com"
+const (
+	apiPath        = "/ECommerceWeb/Fawry/payments/"
+	baseURL        = "https://www.atfawry.com"
+	sandboxBaseURL = "https://atfawry.fawrystaging.com"
+)
 
 // Client Struct
 type Client struct {
 	IsSandbox      bool
 	FawrySecureKey string
+	httpClient     *http.Client
+}
+
+// NewClient returns a new Fawry API client.
+func NewClient(isSandbox bool, secureKey string) *Client {
+	return &Client{
+		IsSandbox:      isSandbox,
+		FawrySecureKey: secureKey,
+		httpClient:     &http.Client{},
+	}
 }
 
 func (fc Client) getURL() string {
@@ -33,7 +45,8 @@ func (fc Client) getSignature(inputs []string) string {
 }
 
 // ChargeRequest could be used to charge the customer with different payment methods.
-// 	It also might be used to create a reference number to be paid at Fawry's outlets or
+//
+//	It also might be used to create a reference number to be paid at Fawry's outlets or
 //	it can be used to direct debit the customer card using card token.
 func (fc Client) ChargeRequest(charge Charge) (*http.Response, error) {
 	err := charge.Validate()
@@ -47,26 +60,13 @@ func (fc Client) ChargeRequest(charge Charge) (*http.Response, error) {
 		charge.MerchantRefNum, charge.CustomerProfileID,
 		charge.PaymentMethod, charge.Amount, charge.CardToken, fc.FawrySecureKey}
 
-	jsonBytes, err := json.Marshal(struct {
+	body := struct {
 		Charge
 		Signature string `json:"signature"`
 	}{Charge: charge,
-		Signature: fc.getSignature(signatureArray)})
+		Signature: fc.getSignature(signatureArray)}
 
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonBytes))
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	return resp, nil
+	return fc.sendRequest(http.MethodPost, url, body)
 }
 
 // RefundRequest  can refund the payment again to the customer
@@ -82,26 +82,16 @@ func (fc Client) RefundRequest(refund Refund) (*http.Response, error) {
 		refund.ReferenceNumber, refund.RefundAmount,
 		refund.Reason, fc.FawrySecureKey}
 
-	jsonBytes, err := json.Marshal(struct {
+	body := struct {
 		Refund
 		Signature string `json:"signature"`
-	}{Refund: refund,
-		Signature: fc.getSignature(signatureArray)})
-
-	if err != nil {
-		return nil, err
+	}{
+		Refund:    refund,
+		Signature: fc.getSignature(signatureArray),
 	}
 
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonBytes))
-	req.Header.Set("Content-Type", "application/json")
+	return fc.sendRequest(http.MethodPost, url, body)
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	return resp, nil
 }
 
 // StatusRequest can use Get Payment Status Service to retrieve the payment status for the charge request
@@ -118,12 +108,27 @@ func (fc Client) StatusRequest(status Status) (*http.Response, error) {
 		status.MerchantRefNum,
 		fc.getSignature(signatureArray))
 
-	req, err := http.NewRequest("GET", url, nil)
+	return fc.sendRequest(http.MethodGet, url, nil)
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+}
+
+// sendRequest is a helper function to send HTTP requests
+func (fc Client) sendRequest(method, url string, body interface{}) (*http.Response, error) {
+	jsonBytes, err := json.Marshal(body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error marshalling JSON: %w", err)
+	}
+
+	req, err := http.NewRequest(method, url, bytes.NewBuffer(jsonBytes))
+	if err != nil {
+		return nil, fmt.Errorf("error creating HTTP request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := fc.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error sending HTTP request: %w", err)
 	}
 
 	return resp, nil
