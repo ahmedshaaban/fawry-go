@@ -47,7 +47,7 @@ func cardTokenRequired(paymentMethod string) validation.RuleFunc {
 	return func(value interface{}) error {
 		cardToken, _ := value.(string)
 		if paymentMethod == "CARD" && len(cardToken) == 0 {
-			return errors.New("Card token is required when payment method is card")
+			return errors.New("card token is required when payment method is card")
 		}
 		return nil
 	}

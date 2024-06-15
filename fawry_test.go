@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	"gopkg.in/h2non/gock.v1"
+	"github.com/h2non/gock"
 )
 
 type fields struct {
@@ -39,10 +39,7 @@ func TestClient_getURL(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fc := Client{
-				IsSandbox:      tt.fields.IsSandbox,
-				FawrySecureKey: tt.fields.FawrySecureKey,
-			}
+			fc := NewClient(tt.fields.IsSandbox, tt.fields.FawrySecureKey)
 			if got := fc.getURL(); got != tt.want {
 				t.Errorf("Client.getURL() = %v, want %v", got, tt.want)
 			}
@@ -77,10 +74,7 @@ func TestClient_getSignature(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fc := Client{
-				IsSandbox:      tt.fields.IsSandbox,
-				FawrySecureKey: tt.fields.FawrySecureKey,
-			}
+			fc := NewClient(tt.fields.IsSandbox, tt.fields.FawrySecureKey)
 			if got := fc.getSignature(tt.args.inputs); got != tt.want {
 				t.Errorf("Client.getSignature() = %v, want %v", got, tt.want)
 			}
@@ -165,10 +159,8 @@ func TestClient_ChargeRequest(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fc := Client{
-				IsSandbox:      tt.fields.IsSandbox,
-				FawrySecureKey: tt.fields.FawrySecureKey,
-			}
+			fc := NewClient(tt.fields.IsSandbox, tt.fields.FawrySecureKey)
+
 			got, _ := fc.ChargeRequest(tt.args.charge)
 
 			if got.Status != tt.want.Status {
@@ -242,10 +234,7 @@ func TestClient_RefundRequest(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fc := Client{
-				IsSandbox:      tt.fields.IsSandbox,
-				FawrySecureKey: tt.fields.FawrySecureKey,
-			}
+			fc := NewClient(tt.fields.IsSandbox, tt.fields.FawrySecureKey)
 			got, _ := fc.RefundRequest(tt.args.refund)
 			if got.Status != tt.want.Status {
 				t.Errorf("Client.RefundRequest() got = %v, expected %v", got.Status, tt.want.Status)
@@ -322,10 +311,7 @@ func TestClient_StatusRequest(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fc := Client{
-				IsSandbox:      tt.fields.IsSandbox,
-				FawrySecureKey: tt.fields.FawrySecureKey,
-			}
+			fc := NewClient(tt.fields.IsSandbox, tt.fields.FawrySecureKey)
 			got, _ := fc.StatusRequest(tt.args.status)
 			if got.Status != tt.want.Status {
 				t.Errorf("Client.StatusRequest() got = %v, expected %v", got.Status, tt.want.Status)
